@@ -1,0 +1,42 @@
+# Capital Core
+
+The capital generation engine for the Tensura Faction Spawn ecosystem
+(SPIKE-CAPITAL-GEN-01, Option C hybrid): Core plans a capital as a set of
+work items, persists the plan before construction, and builds it across
+server ticks under a time budget - resuming after crashes exactly where it
+stopped. District interiors stay jigsaw's job (the shipped capitals remain
+vanilla-jigsaw structures under engine A).
+
+## What the PoC does
+
+- `/capitalgen plan <id>` - plans a 512-block capital (a 4x4 district grid at
+  128-block spacing with road segments) centered on the operator, persisted
+  immediately.
+- `/capitalgen run <id>` - flips the persisted running flag; the budget
+  controller drains pending work items on server ticks within a 5 ms budget,
+  marking progress into the saved data after every item.
+- `/capitalgen status` - per-plan progress.
+- Crash mid-generation and restart: the plan resumes with its already-built
+  items intact.
+
+## Dependencies
+
+| | Mod | Why |
+|---|---|---|
+| Required | Minecraft | - |
+| Required | NeoForge | - |
+
+## Credits
+
+- Built on [NeoForge](https://neoforged.net/).
+
+## License
+
+GNU Lesser General Public License v2.1 - see [`LICENSE`](LICENSE).
+Copyright (c) 2026 Bitwise Madness.
+
+## AI disclosure
+
+Parts of this project were written with the assistance of AI coding tools.
+AI-assisted code, data and documentation ship only after human review by the
+maintainers.
