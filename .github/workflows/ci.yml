@@ -227,8 +227,7 @@ jobs:
           java-version: '21'
           cache: gradle
 
-      # ignoreFailures in build.gradle: SpotBugs findings never fail this
-      # step during the grace period - the job exists to surface volume.
+      # Enforced since #1: findings fail this step (ignoreFailures dropped       # from build.gradle). The report still uploads below via if: always().
       - name: SpotBugs
         env:
           PACKAGE_READ_TOKEN: ${{ secrets.PACKAGE_READ_TOKEN }}

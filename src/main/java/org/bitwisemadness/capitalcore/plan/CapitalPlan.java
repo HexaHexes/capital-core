@@ -111,7 +111,7 @@ public final class CapitalPlan {
     }
 
     public List<Item> items() {
-        return items;
+        return List.copyOf(items);
     }
 
     public boolean running() {
