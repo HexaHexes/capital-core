@@ -2,11 +2,11 @@ package org.bitwisemadness.capitalcore.gen;
 
 import java.util.HashSet;
 import java.util.Set;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerLevel;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.core.registries.Registries;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.bitwisemadness.capitalcore.CapitalCore;
 import org.bitwisemadness.capitalcore.plan.CapitalPlan;
