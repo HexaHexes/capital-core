@@ -76,7 +76,7 @@ public final class GenerationDriver {
 
     private void execute(ServerLevel level, CapitalPlan plan, CapitalPlan.Item item) {
         if (item.kind() == CapitalPlan.Kind.DISTRICT) {
-            Builder.buildDistrict(level, item.x(), item.z());
+            Builder.buildDistrict(level, item.endX(), item.x(), item.z());
         } else {
             Builder.buildRoad(level, item.x(), item.z(), item.endX(), item.endZ());
         }

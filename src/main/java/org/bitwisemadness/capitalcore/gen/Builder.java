@@ -17,8 +17,13 @@ public final class Builder {
     private Builder() {
     }
 
-    /** Builds one district: a levelled 16x16 platform, a perimeter wall, a marker spire. */
-    public static void buildDistrict(ServerLevel level, int cx, int cz) {
+    /**
+     * Builds one district: the planner's terrain work (a levelled 16x16
+     * platform, perimeter wall), then the authored interior from the template
+     * pool - falling back to the procedural marker spire when the template is
+     * unavailable.
+     */
+    public static void buildDistrict(ServerLevel level, int ordinal, int cx, int cz) {
         int ground = groundY(level, cx, cz);
         for (int dx = -8; dx <= 8; dx++) {
             for (int dz = -8; dz <= 8; dz++) {
@@ -32,11 +37,13 @@ public final class Builder {
             wall(level, cx - 8, ground, cz + i);
             wall(level, cx + 8, ground, cz + i);
         }
-        BlockPos spire = new BlockPos(cx, ground + 1, cz);
-        for (int dy = 0; dy < 6; dy++) {
-            level.setBlock(spire.offset(0, dy, 0), Blocks.STONE_BRICKS.defaultBlockState(), 3);
+        if (!TemplateDistricts.placeInterior(level, ordinal, new BlockPos(cx, ground, cz))) {
+            BlockPos spire = new BlockPos(cx, ground + 1, cz);
+            for (int dy = 0; dy < 6; dy++) {
+                level.setBlock(spire.offset(0, dy, 0), Blocks.STONE_BRICKS.defaultBlockState(), 3);
+            }
+            level.setBlock(spire.offset(0, 6, 0), Blocks.GOLD_BLOCK.defaultBlockState(), 3);
         }
-        level.setBlock(spire.offset(0, 6, 0), Blocks.GOLD_BLOCK.defaultBlockState(), 3);
     }
 
     /** Builds one road segment: a 3-wide cobblestone path between two centers. */
