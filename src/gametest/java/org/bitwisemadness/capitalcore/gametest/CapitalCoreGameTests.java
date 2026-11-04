@@ -1,14 +1,18 @@
 package org.bitwisemadness.capitalcore.gametest;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.level.block.Blocks;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import org.bitwisemadness.capitalcore.CapitalCore;
+import org.bitwisemadness.capitalcore.gen.Builder;
 import org.bitwisemadness.capitalcore.gen.Planner;
 import org.bitwisemadness.capitalcore.plan.CapitalPlan;
 
-/** Smoke test plus the plan-model persistence proof for the PoC. */
+/** Engine coverage: the model, the layout, and the authored interiors. */
 @GameTestHolder(CapitalCore.MOD_ID)
 @PrefixGameTestTemplate(false)
 public final class CapitalCoreGameTests {
@@ -16,19 +20,16 @@ public final class CapitalCoreGameTests {
     private CapitalCoreGameTests() {
     }
 
+    /** Smoke test: the mod loads and the gametest harness runs. */
     @GameTest(template = "empty")
     public static void mod_loads(GameTestHelper helper) {
         helper.succeed();
     }
 
-    /**
-     * The plan survives an NBT roundtrip intact: identity, center, item count
-     * and the running flag - the shape crash-resume depends on.
-     */
+    /** The plan model survives the NBT roundtrip - the crash-resume shape. */
     @GameTest(template = "empty")
     public static void plan_persists_through_nbt(GameTestHelper helper) {
-        CapitalPlan plan = Planner.plan("poc", "minecraft:overworld",
-                new net.minecraft.core.BlockPos(100, 64, -200));
+        CapitalPlan plan = Planner.plan("poc", "minecraft:overworld", new BlockPos(100, 64, -200));
         plan.setRunning(true);
         plan.items().get(0).markDone();
         CapitalPlan restored = CapitalPlan.read(plan.write());
@@ -45,8 +46,7 @@ public final class CapitalCoreGameTests {
     /** The PoC layout is a 4x4 district grid: 16 districts + 24 road segments. */
     @GameTest(template = "empty")
     public static void planner_builds_the_512_footprint(GameTestHelper helper) {
-        CapitalPlan plan = Planner.plan("layout", "minecraft:overworld",
-                new net.minecraft.core.BlockPos(0, 64, 0));
+        CapitalPlan plan = Planner.plan("layout", "minecraft:overworld", new BlockPos(0, 64, 0));
         long districts = plan.items().stream()
                 .filter(i -> i.kind() == CapitalPlan.Kind.DISTRICT).count();
         long roads = plan.items().stream()
@@ -55,6 +55,28 @@ public final class CapitalCoreGameTests {
         helper.assertTrue(roads == 24, "expected 24 road segments, got " + roads);
         int span = Planner.SPACING * (Planner.GRID - 1);
         helper.assertTrue(span + Planner.SPACING == 512, "footprint is not 512 blocks");
+        helper.succeed();
+    }
+
+    /**
+     * An authored district interior resolves from the datapack and places on
+     * the planner's platform without error - the Option C contract (authored
+     * pieces fill the interiors the planner lays out).
+     */
+    @GameTest(template = "empty")
+    public static void district_interior_places(GameTestHelper helper) {
+        BlockPos anchor = helper.absolutePos(new BlockPos(2, 1, 2));
+        var template = helper.getLevel().getStructureManager()
+                .get(ResourceLocation.parse("capital_core:district/hall"));
+        helper.assertTrue(template.isPresent(), "the hall interior template did not resolve");
+        var size = template.get().getSize();
+        helper.assertTrue(size.getX() == 15 && size.getY() == 9 && size.getZ() == 15,
+                "unexpected template size: " + size);
+        Builder.buildDistrict(helper.getLevel(), 0, anchor.getX(), anchor.getZ());
+        BlockPos origin = anchor.offset(-size.getX() / 2, 1, -size.getZ() / 2);
+        var state = helper.getLevel().getBlockState(origin);
+        helper.assertTrue(state.is(Blocks.ANDESITE),
+                "expected andesite at the template origin, got " + state.getBlock());
         helper.succeed();
     }
 }

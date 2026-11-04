@@ -37,7 +37,9 @@ public final class Planner {
                 int dx = center.getX() + first + gx * SPACING;
                 int dz = center.getZ() + first + gz * SPACING;
                 centers[gx * GRID + gz] = new int[]{dx, dz};
-                items.add(new CapitalPlan.Item(CapitalPlan.Kind.DISTRICT, dx, dz, dx, dz, false));
+                // x2 carries the stable district ordinal: the interior template
+                // selector must be identical across crash-resumes.
+                items.add(new CapitalPlan.Item(CapitalPlan.Kind.DISTRICT, dx, dz, gx * GRID + gz, dz, false));
             }
         }
         for (int gx = 0; gx < GRID; gx++) {
