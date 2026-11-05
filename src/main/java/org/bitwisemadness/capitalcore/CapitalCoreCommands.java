@@ -41,7 +41,8 @@ public final class CapitalCoreCommands {
             source.sendFailure(Component.literal("plan '" + id + "' already exists"));
             return Command.SINGLE_SUCCESS;
         }
-        CapitalPlan plan = Planner.plan(id, source.getLevel().dimension().location().toString(), center);
+        CapitalPlan plan = Planner.plan(id, source.getLevel().dimension().location().toString(),
+                source.getLevel(), center);
         data.put(plan);
         source.sendSuccess(() -> Component.literal(
                 "planned '" + id + "': " + plan.items().size() + " work items at " + center.toShortString()),

@@ -3,6 +3,8 @@ package org.bitwisemadness.capitalcore.gen;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.levelgen.Heightmap;
 import org.bitwisemadness.capitalcore.plan.CapitalPlan;
 
 /**
@@ -23,11 +25,22 @@ public final class Planner {
     }
 
     /**
-     * Builds the plan for a capital centered on {@code center} in
-     * {@code dimension}. District centers sit on the 4x4 grid; road segments
-     * connect orthogonally adjacent districts.
+     * The skirt-free variant: for pure-JVM contexts (the JUnit suite) where
+     * no terrain is available to read. No support-skirt items are emitted.
      */
     public static CapitalPlan plan(String id, String dimension, BlockPos center) {
+        return plan(id, dimension, null, center);
+    }
+
+    /**
+     * Builds the plan for a capital centered on {@code center} in
+     * {@code dimension}. District centers sit on the 4x4 grid; road segments
+     * connect orthogonally adjacent districts. Each district is followed by a
+     * support-skirt item stamped with the terrain height at the district
+     * center (read at plan time), so the platform is grounded no matter how
+     * the terrain sits.
+     */
+    public static CapitalPlan plan(String id, String dimension, ServerLevel level, BlockPos center) {
         List<CapitalPlan.Item> items = new ArrayList<>();
         int half = (GRID - 1) / 2;
         int first = -half * SPACING;
@@ -40,6 +53,12 @@ public final class Planner {
                 // x2 carries the stable district ordinal: the interior template
                 // selector must be identical across crash-resumes.
                 items.add(new CapitalPlan.Item(CapitalPlan.Kind.DISTRICT, dx, dz, gx * GRID + gz, dz, false));
+                if (level != null) {
+                    int groundY = level.getHeight(Heightmap.Types.WORLD_SURFACE, dx, dz);
+                    // x2 carries the district's terrain height: the skirt fills
+                    // from the platform down to the ground, capped for the void.
+                    items.add(new CapitalPlan.Item(CapitalPlan.Kind.SKIRT, dx, dz, groundY, dz, false));
+                }
             }
         }
         for (int gx = 0; gx < GRID; gx++) {

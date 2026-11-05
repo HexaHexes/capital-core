@@ -15,9 +15,9 @@ import net.minecraft.nbt.Tag;
  */
 public final class CapitalPlan {
 
-    /** The two work-item kinds the PoC engine emits. */
+    /** The three work-item kinds the PoC engine emits. */
     public enum Kind {
-        DISTRICT, ROAD
+        DISTRICT, ROAD, SKIRT
     }
 
     /** One unit of construction work: a district build or a road segment. */
