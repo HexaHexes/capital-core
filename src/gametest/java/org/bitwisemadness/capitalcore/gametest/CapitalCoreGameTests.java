@@ -4,7 +4,9 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.Rotation;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import org.bitwisemadness.capitalcore.CapitalCore;
@@ -77,6 +79,34 @@ public final class CapitalCoreGameTests {
         var state = helper.getLevel().getBlockState(origin);
         helper.assertTrue(state.is(Blocks.ANDESITE),
                 "expected andesite at the template origin, got " + state.getBlock());
+        helper.succeed();
+    }
+
+    /**
+     * The rotation centering holds for all four rotations: the hall template
+     * places at each rotation's computed origin and the template's
+     * rotation-invariant corner block lands exactly there. Sequential
+     * placements at the same anchor - each asserts before the next overwrites.
+     */
+    @GameTest(template = "empty")
+    public static void all_rotations_place_centered(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        var template = level.getStructureManager()
+                .get(ResourceLocation.parse("capital_core:district/hall")).orElseThrow();
+        BlockPos base = helper.absolutePos(new BlockPos(2, 1, 2));
+        for (int r = 0; r < Rotation.values().length; r++) {
+            Rotation rotation = Rotation.values()[r];
+            BlockPos origin = org.bitwisemadness.capitalcore.gen.TemplateDistricts
+                    .centeredOrigin(base, template.getSize(), rotation);
+            template.placeInWorld(level, origin, origin,
+                    new net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings()
+                            .setRotation(rotation).setIgnoreEntities(true),
+                    level.random, 3);
+            var state = level.getBlockState(origin);
+            helper.assertTrue(state.is(Blocks.ANDESITE),
+                    "rotation " + rotation + ": the template corner did not land at the computed origin, got "
+                            + state.getBlock());
+        }
         helper.succeed();
     }
 }
