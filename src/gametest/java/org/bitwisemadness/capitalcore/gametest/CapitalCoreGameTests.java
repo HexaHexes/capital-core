@@ -7,6 +7,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.Rotation;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import org.bitwisemadness.capitalcore.CapitalCore;
@@ -31,7 +32,8 @@ public final class CapitalCoreGameTests {
     /** The plan model survives the NBT roundtrip - the crash-resume shape. */
     @GameTest(template = "empty")
     public static void plan_persists_through_nbt(GameTestHelper helper) {
-        CapitalPlan plan = Planner.plan("poc", "minecraft:overworld", new BlockPos(100, 64, -200));
+        CapitalPlan plan = Planner.plan("poc", "minecraft:overworld",
+                helper.getLevel(), new BlockPos(100, 64, -200));
         plan.setRunning(true);
         plan.items().get(0).markDone();
         CapitalPlan restored = CapitalPlan.read(plan.write());
@@ -45,16 +47,20 @@ public final class CapitalCoreGameTests {
         helper.succeed();
     }
 
-    /** The PoC layout is a 4x4 district grid: 16 districts + 24 road segments. */
+    /** The PoC layout: a 4x4 district grid - 16 districts, 24 roads, 16 skirts. */
     @GameTest(template = "empty")
     public static void planner_builds_the_512_footprint(GameTestHelper helper) {
-        CapitalPlan plan = Planner.plan("layout", "minecraft:overworld", new BlockPos(0, 64, 0));
+        CapitalPlan plan = Planner.plan("layout", "minecraft:overworld",
+                helper.getLevel(), new BlockPos(0, 64, 0));
         long districts = plan.items().stream()
                 .filter(i -> i.kind() == CapitalPlan.Kind.DISTRICT).count();
         long roads = plan.items().stream()
                 .filter(i -> i.kind() == CapitalPlan.Kind.ROAD).count();
+        long skirts = plan.items().stream()
+                .filter(i -> i.kind() == CapitalPlan.Kind.SKIRT).count();
         helper.assertTrue(districts == 16, "expected 16 districts, got " + districts);
         helper.assertTrue(roads == 24, "expected 24 road segments, got " + roads);
+        helper.assertTrue(skirts == 16, "expected 16 support skirts, got " + skirts);
         int span = Planner.SPACING * (Planner.GRID - 1);
         helper.assertTrue(span + Planner.SPACING == 512, "footprint is not 512 blocks");
         helper.succeed();
@@ -107,6 +113,37 @@ public final class CapitalCoreGameTests {
                     "rotation " + rotation + ": the template corner did not land at the computed origin, got "
                             + state.getBlock());
         }
+        helper.succeed();
+    }
+
+    /**
+     * The support skirt grounds the platform: over a flat floor with only a
+     * center pillar, the platform builds at the pillar top and the skirt fills
+     * the underside down to the floor - no floating plateau.
+     */
+    @GameTest(template = "empty")
+    public static void district_platform_gets_skirt_support(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos base = helper.absolutePos(new BlockPos(2, 1, 2));
+        int cx = base.getX() + 4;
+        int cz = base.getZ() + 4;
+        int floorY = base.getY() - 6;
+        for (int dx = -10; dx <= 10; dx++) {
+            for (int dz = -10; dz <= 10; dz++) {
+                level.setBlock(new BlockPos(base.getX() + dx, floorY, base.getZ() + dz),
+                        Blocks.STONE.defaultBlockState(), 3);
+            }
+        }
+        // The center pillar drags the heightmap up: the platform builds at its
+        // top, four blocks above the floor.
+        level.setBlock(new BlockPos(cx, floorY + 1, cz), Blocks.STONE.defaultBlockState(), 3);
+        int groundY = level.getHeight(Heightmap.Types.WORLD_SURFACE, cx, cz);
+        Builder.buildDistrict(level, 0, cx, cz);
+        Builder.buildSkirt(level, cx, cz, groundY);
+        // Directly under the platform, off the pillar: the skirt, not air.
+        var under = level.getBlockState(new BlockPos(cx + 5, groundY - 2, cz));
+        helper.assertTrue(under.is(Blocks.STONE),
+                "the platform is unsupported under its edge, got " + under.getBlock());
         helper.succeed();
     }
 }

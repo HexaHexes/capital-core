@@ -69,6 +69,23 @@ public final class Builder {
         }
     }
 
+    /**
+     * Fills the ground under a district's platform so it never floats: a
+     * fixed-depth skirt of stone under the full footprint. The depth is
+     * bounded (no terrain read - the district's own build would pollute the
+     * heightmap), which keeps the skirt deterministic and void-safe.
+     */
+    public static void buildSkirt(ServerLevel level, int cx, int cz, int platformY) {
+        for (int dx = -8; dx <= 8; dx++) {
+            for (int dz = -8; dz <= 8; dz++) {
+                for (int y = platformY - 1; y >= platformY - 12; y--) {
+                    level.setBlock(new BlockPos(cx + dx, y, cz + dz),
+                            Blocks.STONE.defaultBlockState(), 3);
+                }
+            }
+        }
+    }
+
     private static int groundY(ServerLevel level, int x, int z) {
         return level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z);
     }
