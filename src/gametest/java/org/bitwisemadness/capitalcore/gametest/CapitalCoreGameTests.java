@@ -146,4 +146,44 @@ public final class CapitalCoreGameTests {
                 "the platform is unsupported under its edge, got " + under.getBlock());
         helper.succeed();
     }
+
+    /**
+     * Terrain adaptation on a slope (5.6): the heightmap rises across the
+     * footprint, so the platform sits mid-slope and the high side would bury
+     * the interior. The carve clears the up-slope above the platform; the
+     * down-slope is grounded by the skirt.
+     */
+    @GameTest(template = "empty")
+    public static void district_carves_its_slope(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos base = helper.absolutePos(new BlockPos(2, 1, 2));
+        int cx = base.getX() + 10;
+        int cz = base.getZ() + 10;
+        // A stone slope rising across the footprint: the heightmap at the
+        // center is mid-slope, the +x side is higher, the -x side lower.
+        for (int dx = -10; dx <= 10; dx++) {
+            int h = base.getY() + Math.min(10, Math.max(0, dx + 5));
+            for (int dz = -10; dz <= 10; dz++) {
+                for (int y = base.getY() - 2; y <= h; y++) {
+                    level.setBlock(new BlockPos(base.getX() + dx, y, base.getZ() + dz),
+                            Blocks.STONE.defaultBlockState(), 3);
+                }
+            }
+        }
+        int ground = level.getHeight(Heightmap.Types.WORLD_SURFACE, cx, cz);
+        Builder.buildDistrict(level, 0, cx, cz);
+        // The up-slope above the platform is carved to air.
+        var upslope = level.getBlockState(new BlockPos(cx + 6, ground + 3, cz));
+        helper.assertTrue(upslope.is(Blocks.AIR),
+                "the up-slope survived the carve, got " + upslope.getBlock());
+        // The interior floor is the hall andesite.
+        var floor = level.getBlockState(new BlockPos(cx + 2, ground + 1, cz + 2));
+        helper.assertTrue(floor.is(Blocks.ANDESITE),
+                "the interior floor did not place, got " + floor.getBlock());
+        // The down-slope under the platform is skirt-grounded.
+        var skirt = level.getBlockState(new BlockPos(cx - 6, ground - 3, cz));
+        helper.assertTrue(skirt.is(Blocks.STONE),
+                "the down-slope is not skirt-grounded, got " + skirt.getBlock());
+        helper.succeed();
+    }
 }

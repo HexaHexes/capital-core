@@ -31,6 +31,17 @@ public final class Builder {
                         Blocks.POLISHED_ANDESITE.defaultBlockState(), 3);
             }
         }
+        // Carve the air above the platform (terrain adaptation, §5.6): a
+        // hillside over the footprint would bury the interior - clear the
+        // full column up to the interior's headroom before placing it.
+        for (int dx = -8; dx <= 8; dx++) {
+            for (int dz = -8; dz <= 8; dz++) {
+                for (int dy = 1; dy <= 12; dy++) {
+                    level.setBlock(new BlockPos(cx + dx, ground + dy, cz + dz),
+                            Blocks.AIR.defaultBlockState(), 3);
+                }
+            }
+        }
         for (int i = -8; i <= 8; i++) {
             wall(level, cx + i, ground, cz - 8);
             wall(level, cx + i, ground, cz + 8);
