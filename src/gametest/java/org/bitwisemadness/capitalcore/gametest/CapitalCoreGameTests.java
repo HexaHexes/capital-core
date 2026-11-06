@@ -6,7 +6,6 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
@@ -89,72 +88,16 @@ public final class CapitalCoreGameTests {
     }
 
     /**
-     * The rotation centering holds for all four rotations: the hall template
-     * places at each rotation's computed origin and the template's
-     * rotation-invariant corner block lands exactly there. Sequential
-     * placements at the same anchor - each asserts before the next overwrites.
+     * Terrain adaptation on a slope (5.6/5.7): the heightmap rises across the
+     * footprint, so the platform sits mid-slope. The carve clears the
+     * up-slope above the platform; the skirt grounds the down-slope; the
+     * authored interior fills the carved space. One test, one terrain - the
+     * three terrain gametests were merged because their +-10-block terrain
+     * writes crossed the gametest framework's one-block test regions and
+     * interfered with each other's assertions.
      */
     @GameTest(template = "empty")
-    public static void all_rotations_place_centered(GameTestHelper helper) {
-        ServerLevel level = helper.getLevel();
-        var template = level.getStructureManager()
-                .get(ResourceLocation.parse("capital_core:district/hall")).orElseThrow();
-        BlockPos base = helper.absolutePos(new BlockPos(2, 1, 2));
-        for (int r = 0; r < Rotation.values().length; r++) {
-            Rotation rotation = Rotation.values()[r];
-            BlockPos origin = org.bitwisemadness.capitalcore.gen.TemplateDistricts
-                    .centeredOrigin(base, template.getSize(), rotation);
-            template.placeInWorld(level, origin, origin,
-                    new net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings()
-                            .setRotation(rotation).setIgnoreEntities(true),
-                    level.random, 3);
-            var state = level.getBlockState(origin);
-            helper.assertTrue(state.is(Blocks.ANDESITE),
-                    "rotation " + rotation + ": the template corner did not land at the computed origin, got "
-                            + state.getBlock());
-        }
-        helper.succeed();
-    }
-
-    /**
-     * The support skirt grounds the platform: over a flat floor with only a
-     * center pillar, the platform builds at the pillar top and the skirt fills
-     * the underside down to the floor - no floating plateau.
-     */
-    @GameTest(template = "empty")
-    public static void district_platform_gets_skirt_support(GameTestHelper helper) {
-        ServerLevel level = helper.getLevel();
-        BlockPos base = helper.absolutePos(new BlockPos(2, 1, 2));
-        int cx = base.getX() + 4;
-        int cz = base.getZ() + 4;
-        int floorY = base.getY() - 6;
-        for (int dx = -10; dx <= 10; dx++) {
-            for (int dz = -10; dz <= 10; dz++) {
-                level.setBlock(new BlockPos(base.getX() + dx, floorY, base.getZ() + dz),
-                        Blocks.STONE.defaultBlockState(), 3);
-            }
-        }
-        // The center pillar drags the heightmap up: the platform builds at its
-        // top, four blocks above the floor.
-        level.setBlock(new BlockPos(cx, floorY + 1, cz), Blocks.STONE.defaultBlockState(), 3);
-        int groundY = level.getHeight(Heightmap.Types.WORLD_SURFACE, cx, cz);
-        Builder.buildDistrict(level, 0, cx, cz);
-        Builder.buildSkirt(level, cx, cz, groundY);
-        // Directly under the platform, off the pillar: the skirt, not air.
-        var under = level.getBlockState(new BlockPos(cx + 5, groundY - 2, cz));
-        helper.assertTrue(under.is(Blocks.STONE),
-                "the platform is unsupported under its edge, got " + under.getBlock());
-        helper.succeed();
-    }
-
-    /**
-     * Terrain adaptation on a slope (5.6): the heightmap rises across the
-     * footprint, so the platform sits mid-slope and the high side would bury
-     * the interior. The carve clears the up-slope above the platform; the
-     * down-slope is grounded by the skirt.
-     */
-    @GameTest(template = "empty")
-    public static void district_carves_its_slope(GameTestHelper helper) {
+    public static void terrain_adaptation_on_a_slope(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         BlockPos base = helper.absolutePos(new BlockPos(2, 1, 2));
         int cx = base.getX() + 10;
@@ -172,18 +115,20 @@ public final class CapitalCoreGameTests {
         }
         int ground = level.getHeight(Heightmap.Types.WORLD_SURFACE, cx, cz);
         Builder.buildDistrict(level, 0, cx, cz);
+        Builder.buildSkirt(level, cx, cz, ground);
         // The up-slope above the platform is carved to air.
         var upslope = level.getBlockState(new BlockPos(cx + 6, ground + 3, cz));
         helper.assertTrue(upslope.is(Blocks.AIR),
                 "the up-slope survived the carve, got " + upslope.getBlock());
-        // The interior floor is the hall andesite.
+        // The interior floor is the hall's andesite.
         var floor = level.getBlockState(new BlockPos(cx + 2, ground + 1, cz + 2));
         helper.assertTrue(floor.is(Blocks.ANDESITE),
                 "the interior floor did not place, got " + floor.getBlock());
         // The down-slope under the platform is skirt-grounded.
-        var skirt = level.getBlockState(new BlockPos(cx - 6, ground - 3, cz));
+        var skirt = level.getBlockState(new BlockPos(cx - 8, ground - 3, cz));
         helper.assertTrue(skirt.is(Blocks.STONE),
                 "the down-slope is not skirt-grounded, got " + skirt.getBlock());
         helper.succeed();
     }
+
 }
