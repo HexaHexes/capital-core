@@ -31,6 +31,17 @@ public final class Builder {
                         Blocks.POLISHED_ANDESITE.defaultBlockState(), 3);
             }
         }
+        // Carve the air above the platform (terrain adaptation, §5.6): a
+        // hillside over the footprint would bury the interior - clear the
+        // full column up to the interior's headroom before placing it.
+        for (int dx = -8; dx <= 8; dx++) {
+            for (int dz = -8; dz <= 8; dz++) {
+                for (int dy = 1; dy <= 12; dy++) {
+                    level.setBlock(new BlockPos(cx + dx, ground + dy, cz + dz),
+                            Blocks.AIR.defaultBlockState(), 3);
+                }
+            }
+        }
         for (int i = -8; i <= 8; i++) {
             wall(level, cx + i, ground, cz - 8);
             wall(level, cx + i, ground, cz + 8);
@@ -70,14 +81,17 @@ public final class Builder {
     }
 
     /**
-     * Fills the ground under a district's platform so it never floats: a
-     * fixed-depth skirt of stone under the full footprint. The depth is
-     * bounded (no terrain read - the district's own build would pollute the
-     * heightmap), which keeps the skirt deterministic and void-safe.
+     * Fills the ground under the platform's perimeter ring so the edges never
+     * float. Perimeter-only: the interior columns are left untouched (the
+     * authored interior sits on the platform above them). The depth is capped
+     * at twelve - bounded, deterministic, and void-safe.
      */
     public static void buildSkirt(ServerLevel level, int cx, int cz, int platformY) {
         for (int dx = -8; dx <= 8; dx++) {
             for (int dz = -8; dz <= 8; dz++) {
+                if (Math.abs(dx) != 8 && Math.abs(dz) != 8) {
+                    continue;
+                }
                 for (int y = platformY - 1; y >= platformY - 12; y--) {
                     level.setBlock(new BlockPos(cx + dx, y, cz + dz),
                             Blocks.STONE.defaultBlockState(), 3);
