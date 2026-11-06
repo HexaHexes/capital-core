@@ -129,6 +129,16 @@ public final class CapitalCoreGameTests {
         helper.assertTrue(skirt.is(Blocks.STONE),
                 "the down-slope is not skirt-grounded, got " + skirt.getBlock());
         helper.succeed();
+        // The terrain cleanup: the slope's writes reset to air so the later
+        // gametests in the batch see the pristine void, not this test's stone.
+        for (int dx = -10; dx <= 10; dx++) {
+            for (int dz = -10; dz <= 10; dz++) {
+                for (int y = base.getY() - 2; y <= base.getY() + 14; y++) {
+                    level.setBlock(new BlockPos(base.getX() + dx, y, base.getZ() + dz),
+                            Blocks.AIR.defaultBlockState(), 3);
+                }
+            }
+        }
     }
 
 }
