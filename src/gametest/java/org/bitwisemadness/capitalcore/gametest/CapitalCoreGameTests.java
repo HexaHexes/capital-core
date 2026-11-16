@@ -1,5 +1,6 @@
 package org.bitwisemadness.capitalcore.gametest;
 
+import java.util.concurrent.atomic.AtomicReference;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -7,12 +8,17 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import org.bitwisemadness.capitalcore.CapitalCore;
+import org.bitwisemadness.capitalcore.event.CapitalGenerationEvent;
 import org.bitwisemadness.capitalcore.gen.Builder;
+import org.bitwisemadness.capitalcore.gen.CapitalGeneration;
 import org.bitwisemadness.capitalcore.gen.Planner;
 import org.bitwisemadness.capitalcore.plan.CapitalPlan;
+import org.bitwisemadness.capitalcore.plan.CapitalPlanSavedData;
 
 /** Engine coverage: the model, the layout, and the authored interiors. */
 @GameTestHolder(CapitalCore.MOD_ID)
@@ -138,6 +144,47 @@ public final class CapitalCoreGameTests {
                             Blocks.AIR.defaultBlockState(), 3);
                 }
             }
+        }
+    }
+
+    /**
+     * The public request facade plans, persists, and runs a capital, and the
+     * CREATED lifecycle event fires with the plan's identity. A duplicate
+     * request is a no-op and fires nothing.
+     */
+    @GameTest(template = "empty")
+    public static void generation_request_creates_and_runs_plan(GameTestHelper helper) {
+        Listener listener = new Listener();
+        NeoForge.EVENT_BUS.register(listener);
+        try {
+            BlockPos center = helper.absolutePos(new BlockPos(0, 64, 0));
+            helper.assertTrue(CapitalGeneration.request("req", helper.getLevel(), center),
+                    "request did not create a plan");
+            CapitalPlanSavedData data = CapitalPlanSavedData.get(helper.getLevel().getServer());
+            CapitalPlan plan = data.get("req");
+            helper.assertTrue(plan != null, "plan was not persisted");
+            helper.assertTrue(plan.running(), "plan is not running");
+            CapitalGenerationEvent event = listener.seen.get();
+            helper.assertTrue(event != null, "no CREATED event fired");
+            helper.assertTrue(event.phase() == CapitalGenerationEvent.Phase.CREATED, "wrong phase");
+            helper.assertTrue(event.planId().equals("req"), "wrong plan id");
+            listener.seen.set(null);
+            helper.assertTrue(!CapitalGeneration.request("req", helper.getLevel(), center),
+                    "duplicate request returned true");
+            helper.assertTrue(listener.seen.get() == null, "duplicate request fired an event");
+            helper.succeed();
+        } finally {
+            NeoForge.EVENT_BUS.unregister(listener);
+        }
+    }
+
+    /** Registers a generation-event capture on the bus for the request test. */
+    private static final class Listener {
+        final AtomicReference<CapitalGenerationEvent> seen = new AtomicReference<>();
+
+        @SubscribeEvent
+        public void onGeneration(CapitalGenerationEvent event) {
+            seen.set(event);
         }
     }
 

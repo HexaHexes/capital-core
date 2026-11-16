@@ -6,7 +6,9 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
+import org.bitwisemadness.capitalcore.event.CapitalGenerationEvent;
 import org.bitwisemadness.capitalcore.gen.Planner;
 import org.bitwisemadness.capitalcore.plan.CapitalPlan;
 import org.bitwisemadness.capitalcore.plan.CapitalPlanSavedData;
@@ -44,6 +46,8 @@ public final class CapitalCoreCommands {
         CapitalPlan plan = Planner.plan(id, source.getLevel().dimension().location().toString(),
                 source.getLevel(), center);
         data.put(plan);
+        NeoForge.EVENT_BUS.post(new CapitalGenerationEvent(CapitalGenerationEvent.Phase.CREATED,
+                id, plan.dimension(), 0, plan.items().size(), null));
         source.sendSuccess(() -> Component.literal(
                 "planned '" + id + "': " + plan.items().size() + " work items at " + center.toShortString()),
                 true);
