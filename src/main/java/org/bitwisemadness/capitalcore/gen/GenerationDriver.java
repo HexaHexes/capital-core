@@ -7,8 +7,10 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.bitwisemadness.capitalcore.CapitalCore;
+import org.bitwisemadness.capitalcore.event.CapitalGenerationEvent;
 import org.bitwisemadness.capitalcore.plan.CapitalPlan;
 import org.bitwisemadness.capitalcore.plan.CapitalPlanSavedData;
 
@@ -62,6 +64,8 @@ public final class GenerationDriver {
         if (resumedLogged.add(plan.id()) && plan.doneCount() > 0) {
             CapitalCore.LOGGER.info("capitalgen: resumed plan '{}' with {}/{} items already built",
                     plan.id(), plan.doneCount(), plan.items().size());
+            NeoForge.EVENT_BUS.post(new CapitalGenerationEvent(CapitalGenerationEvent.Phase.RESUMED,
+                    plan.id(), plan.dimension(), plan.doneCount(), plan.items().size(), null));
         }
     }
 
@@ -83,11 +87,15 @@ public final class GenerationDriver {
             Builder.buildRoad(level, item.x(), item.z(), item.endX(), item.endZ());
         }
         item.markDone();
+        NeoForge.EVENT_BUS.post(new CapitalGenerationEvent(CapitalGenerationEvent.Phase.ITEM_BUILT,
+                plan.id(), plan.dimension(), plan.doneCount(), plan.items().size(), item.kind()));
     }
 
     private void finish(CapitalPlan plan) {
         plan.setRunning(false);
         CapitalCore.LOGGER.info("capitalgen: plan '{}' complete ({} items)", plan.id(), plan.items().size());
+        NeoForge.EVENT_BUS.post(new CapitalGenerationEvent(CapitalGenerationEvent.Phase.COMPLETE,
+                plan.id(), plan.dimension(), plan.items().size(), plan.items().size(), null));
     }
 
     private static ResourceKey<net.minecraft.world.level.Level> dimension(String name) {
