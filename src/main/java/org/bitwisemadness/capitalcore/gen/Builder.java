@@ -3,7 +3,9 @@ package org.bitwisemadness.capitalcore.gen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
+import org.bitwisemadness.capitalcore.integration.CreateIntegration;
 
 /**
  * The construction primitives for the PoC: direct block setting under the
@@ -54,6 +56,14 @@ public final class Builder {
                 level.setBlock(spire.offset(0, dy, 0), Blocks.STONE_BRICKS.defaultBlockState(), 3);
             }
             level.setBlock(spire.offset(0, 6, 0), Blocks.GOLD_BLOCK.defaultBlockState(), 3);
+        }
+        if (CreateIntegration.isAvailable()) {
+            BlockState accent = CreateIntegration.districtAccent();
+            for (int dx : new int[]{-8, 8}) {
+                for (int dz : new int[]{-8, 8}) {
+                    level.setBlock(new BlockPos(cx + dx, ground + 4, cz + dz), accent, 3);
+                }
+            }
         }
     }
 
