@@ -1,5 +1,6 @@
 package org.bitwisemadness.capitalcore.gametest;
 
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
@@ -17,6 +18,7 @@ import org.bitwisemadness.capitalcore.event.CapitalGenerationEvent;
 import org.bitwisemadness.capitalcore.gen.Builder;
 import org.bitwisemadness.capitalcore.gen.CapitalGeneration;
 import org.bitwisemadness.capitalcore.gen.Planner;
+import org.bitwisemadness.capitalcore.integration.CreateIntegration;
 import org.bitwisemadness.capitalcore.plan.CapitalPlan;
 import org.bitwisemadness.capitalcore.plan.CapitalPlanSavedData;
 
@@ -154,22 +156,25 @@ public final class CapitalCoreGameTests {
      */
     @GameTest(template = "empty")
     public static void generation_request_creates_and_runs_plan(GameTestHelper helper) {
+        // The plan id is unique per run: the SavedData persists in the run
+        // world across runs, so a fixed id collides on the second run.
+        String id = "req-" + UUID.randomUUID();
         Listener listener = new Listener();
         NeoForge.EVENT_BUS.register(listener);
         try {
             BlockPos center = helper.absolutePos(new BlockPos(0, 64, 0));
-            helper.assertTrue(CapitalGeneration.request("req", helper.getLevel(), center),
+            helper.assertTrue(CapitalGeneration.request(id, helper.getLevel(), center),
                     "request did not create a plan");
             CapitalPlanSavedData data = CapitalPlanSavedData.get(helper.getLevel().getServer());
-            CapitalPlan plan = data.get("req");
+            CapitalPlan plan = data.get(id);
             helper.assertTrue(plan != null, "plan was not persisted");
             helper.assertTrue(plan.running(), "plan is not running");
             CapitalGenerationEvent event = listener.seen.get();
             helper.assertTrue(event != null, "no CREATED event fired");
             helper.assertTrue(event.phase() == CapitalGenerationEvent.Phase.CREATED, "wrong phase");
-            helper.assertTrue(event.planId().equals("req"), "wrong plan id");
+            helper.assertTrue(event.planId().equals(id), "wrong plan id");
             listener.seen.set(null);
-            helper.assertTrue(!CapitalGeneration.request("req", helper.getLevel(), center),
+            helper.assertTrue(!CapitalGeneration.request(id, helper.getLevel(), center),
                     "duplicate request returned true");
             helper.assertTrue(listener.seen.get() == null, "duplicate request fired an event");
             helper.succeed();
@@ -186,6 +191,15 @@ public final class CapitalCoreGameTests {
         public void onGeneration(CapitalGenerationEvent event) {
             seen.set(event);
         }
+    }
+
+    /** The Create integration gates on mod presence; absent here, the vanilla accent stays. */
+    @GameTest(template = "empty")
+    public static void create_integration_gates_on_mod_presence(GameTestHelper helper) {
+        helper.assertTrue(!CreateIntegration.isAvailable(), "Create should not be present in the test env");
+        helper.assertTrue(CreateIntegration.districtAccent().is(net.minecraft.world.level.block.Blocks.POLISHED_ANDESITE),
+                "absent Create should keep the vanilla accent");
+        helper.succeed();
     }
 
 }
